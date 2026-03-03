@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  LANDLORD
+  TENANT
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  COMMERCIAL
+  ROOM
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum TenancyStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum PaymentMethod {
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RequestStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum NotificationType {
+  PAYMENT
+  MAINTENANCE
+  LEASE
+  SYSTEM
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  password         String
+  name             String
+  phone            String?
+  role             Role
+  avatar           String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  properties    Property[]
+  tenancies     Tenancy[]
+  payments      Payment[]
+  maintenance   MaintenanceRequest[]
+  notifications Notification[]
+  sentInvites   TenantInvite[]
+}
+
+model Property {
+  id          String       @id @default(uuid())
+  name        String
+  address     String
+  city        String
+  type        PropertyType
+  description String?
+  images      String[]
+  landlordId  String
+  landlord    User         @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  units Unit[]
+}
+
+model Unit {
+  id         String     @id @default(uuid())
+  name       String
+  propertyId String
+  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rentAmount Float
+  status     UnitStatus @default(VACANT)
+  bedrooms   Int        @default(1)
+  bathrooms  Int        @default(1)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  tenancies   Tenancy[]
+  payments    Payment[]
+  maintenance MaintenanceRequest[]
+}
+
+model Tenancy {
+  id         String        @id @default(uuid())
+  tenantId   String
+  tenant     User          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unitId     String
+  unit       Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  leaseStart DateTime
+  leaseEnd   DateTime?
+  rentAmount Float
+  paymentDay Int           @default(1)
+  deposit    Float         @default(0)
+  status     TenancyStatus @default(ACTIVE)
+  documents  String[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Payment {
+  id           String        @id @default(uuid())
+  unitId       String
+  unit         Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId     String
+  tenant       User          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amount       Float
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  techpayToken String?
+  techpayRef   String?
+  phoneNumber  String?
+  periodMonth  Int
+  periodYear   Int
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model MaintenanceRequest {
+  id          String        @id @default(uuid())
+  unitId      String
+  unit        Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      User          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  priority    Priority      @default(MEDIUM)
+  status      RequestStatus @default(OPEN)
+  images      String[]
+  notes       String?
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model TenantInvite {
+  id         String       @id @default(uuid())
+  email      String
+  unitId     String
+  landlordId String
+  landlord   User         @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  token      String       @unique
+  status     InviteStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
